@@ -96,15 +96,19 @@ jobs:
           echo "${{ secrets.STAGING_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
 
-      - name: Install PM2 if missing
-        run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} "\
-          if ! command -v pm2 &> /dev/null; then \
-            echo 'Installing PM2...'; \
-            sudo npm install -g pm2; \
-          else \
-            echo 'PM2 already installed'; \
-          fi"
+          - name: Install PM2 (if needed)
+            run: |
+              ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+              if ! command -v pm2 &> /dev/null; then
+                echo 'Installing PM2...';
+                npm install -g pm2 --prefix ~/.local;
+                echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc;
+                source ~/.bashrc;
+              else
+                echo 'PM2 already installed';
+            fi
+            EOF
+        
 
       - name: Deploy via SCP
         run: |
