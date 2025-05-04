@@ -62,9 +62,6 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Run Build
-        run: npm run build
-
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
@@ -95,35 +92,35 @@ jobs:
           mkdir -p ~/.ssh
           echo "${{ secrets.STAGING_KEY }}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          echo "Host *" >> ~/.ssh/config
+          echo "  StrictHostKeyChecking no" >> ~/.ssh/config
 
-          - name: Install PM2 (if needed)
-            run: |
-              ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
-              if ! command -v pm2 &> /dev/null; then
-                echo 'Installing PM2...';
-                npm install -g pm2 --prefix ~/.local;
-                echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc;
-                source ~/.bashrc;
-              else
-                echo 'PM2 already installed';
-            fi
-            EOF
-        
+      - name: Install PM2 (if needed)
+        run: |
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+          if ! command -v pm2 &> /dev/null; then
+            echo 'Installing PM2...';
+            npm install -g pm2 --prefix ~/.local;
+            echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc;
+            source ~/.bashrc;
+          else
+            echo 'PM2 already installed';
+          fi
+          EOF
 
       - name: Deploy via SCP
         run: |
-          scp -o StrictHostKeyChecking=no -r ./app/* ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ env.DEPLOY_PATH }}
+          scp -r ./app/* ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:${{ env.DEPLOY_PATH }}
 
       - name: Install Node.js dependencies on server
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
           cd ${{ env.DEPLOY_PATH }}
           npm ci
           EOF
 
       - name: Restart app with PM2
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+          ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
           pm2 start ${{ env.DEPLOY_PATH }}/src/index.js --name node-api --update-env -f
           EOF
-
