@@ -95,16 +95,18 @@ jobs:
           echo "Host *" >> ~/.ssh/config
           echo "  StrictHostKeyChecking no" >> ~/.ssh/config
 
-      - name: Install PM2 (if needed)
+      - name: Install Node.js and PM2 if needed
         run: |
           ssh ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+          if ! command -v node &> /dev/null; then
+            echo "Installing Node.js...";
+            curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+            sudo apt-get install -y nodejs
+          fi
+
           if ! command -v pm2 &> /dev/null; then
-            echo 'Installing PM2...';
-            npm install -g pm2 --prefix ~/.local;
-            echo 'export PATH=$PATH:~/.local/bin' >> ~/.bashrc;
-            source ~/.bashrc;
-          else
-            echo 'PM2 already installed';
+            echo "Installing PM2...";
+            npm install -g pm2
           fi
           EOF
 
